@@ -1,0 +1,84 @@
+WWTP_id	Continent	Country/Region	Process_type
+SG-02	Asia	Singapore	C,N,DN
+MX-07	North America	Mexico	C,N,DN,P
+CA-05	North America	Canada	C,N,DN,P
+NL-18	Europe	Netherlands	C,N,DN,P
+MY-06	Asia	Malaysia	C,N,DN
+SA-08	Asia	Saudi Arabia	C,N,DN
+AR-23	South America	Argentina	C,N
+AU-01	Oceania	Australia	C,N,DN
+BE-17	Europe	Belgium	C,N,DN
+CY-01	Europe	Cyprus	C,N,DN
+PT-06	Europe	Portugal	C,N,DN
+IT-11	Europe	Italy	C,N
+ES-23	Europe	Spain	C,N,DN
+DE-14	Europe	Germany	C,N,DN
+PL-06	Europe	Poland	C,N,DN,P
+IL-02	Asia	Israel	C,N,DN
+CH-08	Europe	Switzerland	C,N,DN
+HK-04	Asia	Hong Kong	C,N,DN
+NO1-03	Europe	Norway	C,N,DN
+CZ-11	Europe	Czech Republic	C,N,DN,P
+IN-14	Asia	India	C
+FI-01	Europe	Finland	N,DN
+AT-03	Europe	Austria	None
+AU-18	Oceania	Australia	C,N,DN
+AU-34	Oceania	Australia	C,N,DN,P
+CA-06	North America	Canada	C,N,DN,P
+CZ-17	Europe	Czech Republic	C,N,DN
+ES-07	Europe	Spain	C
+IN-11	Asia	India	C
+IT-09	Europe	Italy	C,N,DN,P
+MX-06	North America	Mexico	C,N,DN,P
+NL-06	Europe	Netherlands	C,N
+NO2-03	Europe	Norway	C,P
+SE-10	Europe	Sweden	C,N,DN
+SE-29	Europe	Sweden	C,N,DN,P
+UK-14	Europe	United Kingdom	C,N,DN,P
+UK2-07	Europe	United Kingdom	C
+US1-105	North America	United States	C,N,DN
+US1-27	North America	United States	C,N,DN,P
+US1-41	North America	United States	C
+US1-87	North America	United States	C
+US2-03	North America	United States	C,N,DN
+UY-15	South America	Uruguay	C
+BE-09	Europe	Belgium	C,N,DN
+IN-23	Asia	India	C
+CH-10	Europe	Switzerland	C,N,DN,P
+PL-24	Europe	Poland	C,N,DN,P
+AR-04	South America	Argentina	C
+AR-06	South America	Argentina	C
+AR-20	South America	Argentina	C
+AT-02	Europe	Austria	Anammox
+AU-05	Oceania	Australia	C,N,DN,P
+AU-11	Oceania	Australia	C,N,DN
+AU-26	Oceania	Australia	C,N,DN
+AU-32	Oceania	Australia	C,N,DN
+CA-01	North America	Canada	C,N,DN,P
+CA-03	North America	Canada	C,N,DN,P
+CH-22	Europe	Switzerland	C,N,DN,P
+CH-23	Europe	Switzerland	C,N,DN
+HK-01	Asia	Hong Kong	C,N,DN
+HK-05	Asia	Hong Kong	C,N,DN
+IL-01	Asia	Israel	C,N,DN
+IN-03	Asia	India	C
+IN-06	Asia	India	C
+IN-18	Asia	India	C
+MX-09	North America	Mexico	C,N,DN,P
+MX-10	North America	Mexico	C,N,DN,P
+NL-09	Europe	Netherlands	DN
+NL-13	Europe	Netherlands	None
+SA-02	Asia	Saudi Arabia	N,DN
+SA-04	Asia	Saudi Arabia	N,DN
+SA-05	Asia	Saudi Arabia	C,DN
+SG-01	Asia	Singapore	C,N,DN,P
+US1-124	North America	United States	C,N
+US1-126	North America	United States	C,N,DN
+US1-44	North America	United States	C,N,DN
+US1-47	North America	United States	C
+US2-01	North America	United States	Anammox
+US2-13	North America	United States	C,N,DN,P
+US2-26	North America	United States	C
+US2-29	North America	United States	C,N,DN,P
+UY-13	South America	Uruguay	C,N,DN
+UY-16	South America	Uruguay	C
