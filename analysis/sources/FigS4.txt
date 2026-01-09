@@ -1,0 +1,6 @@
+Bacteria	Known_in_MiDAS	impr_20per	impr_50per	impr_100per	Num_of_first_HQ_rep
+Phylum	74 	51 	37 	19 	3 
+Class	186 	144 	105 	79 	18 
+Order	495 	391 	319 	262 	76 
+Family	1042 	862 	762 	663 	265 
+Genus	2533 	2238 	2140 	2006 	1256 
