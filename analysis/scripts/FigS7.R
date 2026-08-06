@@ -1,144 +1,270 @@
-############################################################
-## Fig S7 — Top 10 phyla by recovered MAGs (top) and spReps (bottom, mirrored)
-##
-## Input:
-##   - sources/FigS7.tsv (tab-delimited; header required)
-##     Expected columns:
-##       phylum, NumberofMAGs, NumberofspRep
-##
-## Output:
-##   - figures/FigS7.pdf
-##
-## Notes:
-##   - the dataset was extracted from Supplementary files
-############################################################
+# ============================================================
+# Fig. 4 | Genus-level taxonomy provides a pathway-dependent
+# framework for functional interpretation
+#
+# a: Genus × trait conservation heatmap
+# b: Mixed fraction across taxonomic ranks
+# c: Species-level follow-up for genus-mixed pathways
+# ============================================================
 
-suppressPackageStartupMessages({
-  library(ggplot2)
-  library(ggsci)
-  library(scales)
-  library(dplyr)
-  library(patchwork)
-})
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+library(stringr)
+library(scales)
+library(patchwork)
 
-if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
+# -----------------------------
+# 1. Input files
+# -----------------------------
 
-# ----------------------------- #
-# 1) Read input file
-# ----------------------------- #
-data_raw <- read.table(
-  "sources/FigS7.tsv",
-  header = TRUE, sep = "\t",
-  stringsAsFactors = FALSE,
-  check.names = FALSE
+conservation_file <- "../rank_resolved_pathway_conservation.tsv"
+status_file <- "../rank_resolved_status_summary.tsv"
+species_min3_file <- "../species_followup_for_genus_mixed_pathways_min3MAGs.tsv"
+species_min5_file <- "../species_followup_for_genus_mixed_pathways_min5MAGs.tsv"
+
+conservation <- read_tsv(conservation_file, show_col_types = FALSE)
+status_summary <- read_tsv(status_file, show_col_types = FALSE)
+species_min3 <- read_tsv(species_min3_file, show_col_types = FALSE)
+species_min5 <- read_tsv(species_min5_file, show_col_types = FALSE)
+
+# -----------------------------
+# 2. Settings
+# -----------------------------
+
+rank_levels <- c("Genus", "Family", "Order", "Class", "Phylum")
+
+status_levels <- c(
+  "Conserved present",
+  "Mixed",
+  "Conserved absent"
 )
 
-required_cols <- c("phylum", "NumberofMAGs", "NumberofspRep")
-missing_cols <- setdiff(required_cols, colnames(data_raw))
-if (length(missing_cols) > 0) {
-  stop("Missing required columns in sources/FigS7.tsv: ", paste(missing_cols, collapse = ", "))
-}
+status_cols <- c(
+  "Conserved present" = "#2166AC",
+  "Mixed" = "#F4A582",
+  "Conserved absent" = "#D9D9D9"
+)
 
-# ----------------------------- #
-# 2) Clean and standardize columns
-# ----------------------------- #
-data_clean <- data_raw %>%
-  rename(
-    phylum_raw = phylum,
-    Genome_number = NumberofMAGs,
-    species_number = NumberofspRep
+# Adjust labels if your pathway names differ
+pathway_label_map <- c(
+  "Glycolysis" = "Glycolysis",
+  "Glyconeogenesis" = "Glyconeogenesis",
+  "Pentose_phosphate_pathway" = "Pentose phosphate pathway",
+  "Pyruvate_oxidation" = "Pyruvate oxidation",
+  "TCA_cycle" = "TCA cycle",
+  "Glyoxylate_cycle" = "Glyoxylate cycle",
+  "Fatty_acid_beta_oxidation" = "Fatty acid beta-oxidation",
+  "Fatty_acid_beta-oxidation" = "Fatty acid beta-oxidation",
+  "Oxidative_phosphorylation" = "Oxidative phosphorylation",
+  "Glycogen_biosynthesis" = "Glycogen biosynthesis",
+  "Glycogen_degradation" = "Glycogen degradation",
+  "PHA_accumulation" = "PHA accumulation",
+  "PHA_degradation" = "PHA degradation",
+  "Calvin_cycle" = "Calvin cycle",
+  "rTCA_cycle" = "rTCA cycle",
+  "Ammonia_oxidation" = "Ammonia oxidation",
+  "Comammox" = "Comammox",
+  "Nitrite_oxidation" = "Nitrite oxidation",
+  "Denitrification" = "Complete denitrification",
+  "DNRA" = "DNRA",
+  "Assimilatory_sulfate_reduction" = "Assimilatory sulfate reduction",
+  "SOX" = "Sox",
+  "Sox" = "Sox",
+  "Oxidative_dsr" = "Oxidative Dsr",
+  "Oxidative dsr" = "Oxidative Dsr"
+)
+
+preferred_pathway_order <- c(
+  "Calvin cycle",
+  "rTCA cycle",
+  "Pyruvate oxidation",
+  "TCA cycle",
+  "Glycolysis",
+  "Glyconeogenesis",
+  "Pentose phosphate pathway",
+  "Glyoxylate cycle",
+  "Fatty acid beta-oxidation",
+  "Oxidative phosphorylation",
+  "Glycogen biosynthesis",
+  "Glycogen degradation",
+  "PHA accumulation",
+  "PHA degradation",
+  "Ammonia oxidation",
+  "Nitrite oxidation",
+  "Comammox",
+  "Complete denitrification",
+  "DNRA",
+  "Assimilatory sulfate reduction",
+  "Sox",
+  "Oxidative Dsr"
+)
+
+
+clean_pathway_labels <- function(x) {
+  recode(x, !!!pathway_label_map, .default = x)
+}
+## axis titles
+axis_black_big_theme <- theme(
+  axis.title = element_text(color = "black", size = 12),
+  axis.text  = element_text(color = "black", size = 10.5),
+  legend.title = element_text(color = "black", size = 11),
+  legend.text  = element_text(color = "black", size = 10),
+  plot.tag = element_text(color = "black", size = 14, face = "bold")
+)
+
+
+# ============================================================
+# Fig. Sx: Overall mixed fraction across taxonomic ranks
+# ============================================================
+
+# ============================================================
+# Rank-resolved mixed fraction distribution by pathway
+# Violin + boxplot + points + number of mixed combinations
+# ============================================================
+
+library(ggrepel)
+
+fig4sx_dist_df <- status_summary %>%
+  filter(Tax_rank %in% rank_levels) %>%
+  mutate(
+    Tax_rank = factor(Tax_rank, levels = rank_levels),
+    Pathway_label = clean_pathway_labels(Pathway)
+  ) %>%
+  group_by(Tax_rank, Pathway, Pathway_label) %>%
+  summarise(
+    n_mixed = sum(n_taxa[Status == "Mixed"], na.rm = TRUE),
+    total_combinations = sum(n_taxa, na.rm = TRUE),
+    mixed_fraction = n_mixed / total_combinations,
+    .groups = "drop"
+  )
+
+# Overall mixed fraction per taxonomic rank
+fig4sx_overall_df <- status_summary %>%
+  filter(Tax_rank %in% rank_levels) %>%
+  group_by(Tax_rank) %>%
+  summarise(
+    mixed_combinations = sum(n_taxa[Status == "Mixed"], na.rm = TRUE),
+    total_combinations = sum(n_taxa, na.rm = TRUE),
+    mixed_fraction = mixed_combinations / total_combinations,
+    .groups = "drop"
   ) %>%
   mutate(
-    Phylum = sub("^p__", "", phylum_raw),
-    Phylum = trimws(Phylum)
+    Tax_rank = factor(Tax_rank, levels = rank_levels),
+    label = paste0(
+      scales::number(mixed_fraction * 100, accuracy = 0.1),
+      "\n",
+      "n = ", mixed_combinations
+    )
   )
 
-# ----------------------------- #
-# 3) Select top 10 by recovered MAGs
-# ----------------------------- #
-top10 <- data_clean %>%
-  arrange(desc(Genome_number)) %>%
-  slice(1:10)
-
-# Keep x-order identical to the selected table order
-phylum_levels <- top10$Phylum
-top10 <- top10 %>%
-  mutate(Phylum = factor(Phylum, levels = phylum_levels))
-
-# Dynamic y-limits
-ymax_genome <- ceiling(max(top10$Genome_number, na.rm = TRUE) * 1.05)
-ymax_species <- ceiling(max(top10$species_number, na.rm = TRUE) * 1.25)
-
-# ----------------------------- #
-# 4) Top panel: number of MAGs
-# ----------------------------- #
-p_phylum.genome <- ggplot(top10, aes(x = Phylum, y = Genome_number, fill = Phylum)) +
-  geom_col() +
-  geom_text(
-    aes(label = scales::comma(Genome_number)),
-    vjust = -0.5,
-    color = "black",
-    size = 6
+p_Sx_violin_line <- ggplot(
+  fig4sx_dist_df,
+  aes(x = Tax_rank, y = mixed_fraction)
+) +
+  geom_violin(
+    width = 0.85,
+    trim = FALSE,
+    fill = "#4DBBD5FF",
+    alpha = 0.35,
+    color = NA
   ) +
-  scale_fill_aaas() +
-  coord_cartesian(ylim = c(0, ymax_genome)) +
-  scale_y_continuous(labels = scales::comma) +
-  labs(x = "", y = "Number of MAGs", title = "") +
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 90, hjust = 1),
-    panel.background = element_rect(fill = "white"),
-    panel.grid.major = element_blank(),
-    text = element_text(size = 22),
-    axis.text = element_text(color = "black"),
-    legend.position = "none"
-  )
-
-# ----------------------------- #
-# 5) Bottom panel: number of species (mirrored)
-# ----------------------------- #
-top10 <- top10 %>%
-  mutate(species_number_neg = -species_number)
-
-p_phylum.species <- ggplot(top10, aes(x = Phylum, y = species_number_neg, fill = Phylum)) +
-  geom_col() +
-  geom_text(
-    aes(label = scales::comma(species_number)),
-    vjust = 1.5,
+  geom_boxplot(
+    width = 0.22,
+    outlier.shape = NA,
+    fill = "white",
     color = "black",
-    size = 6
+    linewidth = 0.4
   ) +
-  scale_fill_aaas() +
-  coord_cartesian(ylim = c(-ymax_species, 0)) +
-  scale_y_continuous(labels = function(x) scales::comma(abs(x))) +
-  labs(x = "Phylum", y = "Number of species") +
-  theme_bw() +
+  geom_point(
+    aes(size = n_mixed),
+    shape = 21,
+    fill = "#3C5488FF",
+    color = "black",
+    stroke = 0.35,
+    alpha = 0.75,
+    position = position_jitter(
+      width = 0.08,
+      height = 0,
+      seed = 1
+    )
+  ) +
+  geom_line(
+    data = fig4sx_overall_df,
+    aes(x = Tax_rank, y = mixed_fraction, group = 1),
+    inherit.aes = FALSE,
+    linewidth = 0.6,
+    color = "black"
+  ) +
+  geom_point(
+    data = fig4sx_overall_df,
+    aes(x = Tax_rank, y = mixed_fraction),
+    inherit.aes = FALSE,
+    size = 2.8,
+    color = "black"
+  ) +
+  geom_text(
+    data = fig4sx_overall_df,
+    aes(
+      x = Tax_rank,
+      y = mixed_fraction,
+      label = label
+    ),
+    inherit.aes = FALSE,
+    vjust = -0.9,
+    size = 3.2,
+    color = "black",
+    lineheight = 0.85
+  ) +
+  scale_size_continuous(
+    name = "Mixed combinations",
+    range = c(1.5, 4.5)
+  ) +
+  scale_y_continuous(
+    labels = scales::label_number(
+      scale = 100,
+      accuracy = 1
+    ),
+    limits = c(
+      0,
+      max(fig4sx_dist_df$mixed_fraction, fig4sx_overall_df$mixed_fraction, na.rm = TRUE) * 1.25
+    ),
+    expand = expansion(mult = c(0, 0.04))
+  ) +
+  labs(
+    x = "Taxonomic rank",
+    y = "Mixed fraction across pathways (%)"
+  ) +
+  theme_bw(base_size = 11) +
+  axis_black_big_theme +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.background = element_rect(fill = "white"),
-    panel.grid.major = element_blank(),
-    text = element_text(size = 22),
-    axis.text = element_text(color = "black"),
-    legend.position = "none"
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      color = "black",
+      size = 10.5
+    ),
+    legend.position = "right",
+    plot.margin = margin(5, 5, 5, 5)
   )
 
-# Hide x-axis elements on the bottom panel
-p_phylum.species <- p_phylum.species +
-  theme(
-    axis.title.x = element_blank(),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank()
-  )
-
-# ----------------------------- #
-# 6) Combine and export
-# ----------------------------- #
-p_combined <- p_phylum.genome / p_phylum.species +
-  plot_layout(ncol = 1, heights = c(2, 1))
-
-print(p_combined)
-
-ggsave("figures/FigS7.pdf", p_combined, width = 14, height = 10)
+p_Sx_violin_line
 
 
-writeLines(capture.output(sessionInfo()), "../envs/FigS7.sessionInfo.txt")
+ggsave(
+  "FigSx_Overall_mixed_fraction_across_taxonomic_ranks.pdf",
+  p_Sx,
+  width = 12,
+  height = 12
+)
+
+ggsave(
+  "FigSx_Overall_mixed_fraction_across_taxonomic_ranks.png",
+  p_Sx,
+  width = 12,
+  height = 12,
+  dpi = 400
+)
