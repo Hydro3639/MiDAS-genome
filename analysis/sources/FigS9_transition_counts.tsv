@@ -1,0 +1,28 @@
+Cutoff	Baseline_status	Alternative_status	Count	Baseline_count	Percentage_of_baseline_category	Change
+70/30	Conserved absent	Conserved absent	4101	4101	100	Same category
+70/30	Conserved absent	Mixed	0	4101	0	Different category
+70/30	Conserved absent	Conserved present	0	4101	0	Different category
+70/30	Mixed	Conserved absent	80	510	15.6862745098039	Different category
+70/30	Mixed	Mixed	284	510	55.6862745098039	Same category
+70/30	Mixed	Conserved present	146	510	28.6274509803922	Different category
+70/30	Conserved present	Conserved absent	0	1483	0	Different category
+70/30	Conserved present	Mixed	0	1483	0	Different category
+70/30	Conserved present	Conserved present	1483	1483	100	Same category
+80/20	Conserved absent	Conserved absent	4101	4101	100	Same category
+80/20	Conserved absent	Mixed	0	4101	0	Different category
+80/20	Conserved absent	Conserved present	0	4101	0	Different category
+80/20	Mixed	Conserved absent	0	510	0	Different category
+80/20	Mixed	Mixed	510	510	100	Same category
+80/20	Mixed	Conserved present	0	510	0	Different category
+80/20	Conserved present	Conserved absent	0	1483	0	Different category
+80/20	Conserved present	Mixed	0	1483	0	Different category
+80/20	Conserved present	Conserved present	1483	1483	100	Same category
+90/10	Conserved absent	Conserved absent	3985	4101	97.1714216044867	Same category
+90/10	Conserved absent	Mixed	116	4101	2.82857839551329	Different category
+90/10	Conserved absent	Conserved present	0	4101	0	Different category
+90/10	Mixed	Conserved absent	0	510	0	Different category
+90/10	Mixed	Mixed	510	510	100	Same category
+90/10	Mixed	Conserved present	0	510	0	Different category
+90/10	Conserved present	Conserved absent	0	1483	0	Different category
+90/10	Conserved present	Mixed	349	1483	23.5333782872556	Different category
+90/10	Conserved present	Conserved present	1134	1483	76.4666217127444	Same category

@@ -1,0 +1,10 @@
+MAG_weighted_status	equal_species_status	n_combinations
+Conserved absent	Conserved absent	4031
+Conserved absent	Conserved present	0
+Conserved absent	Mixed	70
+Conserved present	Conserved absent	0
+Conserved present	Conserved present	1397
+Conserved present	Mixed	86
+Mixed	Conserved absent	40
+Mixed	Conserved present	54
+Mixed	Mixed	416

@@ -1,0 +1,13 @@
+Cohort	Metric	Catalog	N	Median	Q25	Q75
+HQ_shared	Total_regions	MiDAS-HQ	2289	4	3	7
+HQ_shared	Complete_regions	MiDAS-HQ	2289	4	3	6
+HQ_shared	Median_region_length_kb	MiDAS-HQ	2152	21.535	20.927	24.8295
+HQ_shared	Total_regions	GWASMC	2289	4	2	7
+HQ_shared	Complete_regions	GWASMC	2289	0	0	0
+HQ_shared	Median_region_length_kb	GWASMC	2152	7.218	3.738875	13.719
+HQ_quality	Total_regions	MiDAS-HQ	738	4	3	6
+HQ_quality	Complete_regions	MiDAS-HQ	738	4	2	6
+HQ_quality	Median_region_length_kb	MiDAS-HQ	699	21.67	20.9555	26.3845
+HQ_quality	Total_regions	GWASMC	738	4	3	7
+HQ_quality	Complete_regions	GWASMC	738	0	0	1
+HQ_quality	Median_region_length_kb	GWASMC	699	14.65	10.37725	20.8985

@@ -1,0 +1,5 @@
+cohort	metric	n_pairs	MiDAS_present	GWASMC_present	both	MiDAS_only	GWASMC_only	neither	paired_difference_pct	p_value	p_value_display	p_adjusted_bh	p_adjusted_bh_display
+HQ_shared	any_region_count	2289	2197	2158	2152	45	6	86	1.70380078637	1.83236288365e-08	1.8324e-08	1.83236288365e-08	1.8324e-08
+HQ_shared	any_nonedge_count	2289	2185	437	436	1749	1	103	76.3652249891	0	<1e-300	0	<1e-300
+HQ_quality	any_region_count	738	704	701	699	5	2	32	0.406504065041	0.453125	4.5313e-01	0.453125	4.5313e-01
+HQ_quality	any_nonedge_count	738	700	313	312	388	1	37	52.4390243902	6.18623322846e-115	6.1862e-115	3.71173993707e-114	3.7117e-114

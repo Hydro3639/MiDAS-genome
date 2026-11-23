@@ -1,0 +1,8 @@
+weighting	status	observed_pct_reported	null_mean_pct	null_2.5_pct	null_97.5_pct
+MAG weighted	Conserved present	24.335	7.962	7.729	8.205
+MAG weighted	Mixed	8.369	43.569	42.993	44.126
+MAG weighted	Conserved absent	67.296	48.468	47.948	49.015
+Equal species	Conserved present	23.81	9.51	9.107	9.944
+Equal species	Mixed	9.386	40.919	40.137	41.713
+Equal species	Conserved absent	66.803	49.572	48.802	50.328
+
