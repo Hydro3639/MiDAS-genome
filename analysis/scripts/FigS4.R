@@ -1,153 +1,164 @@
 ############################################################
-## Fig S4 — Species improvement across bacterial lineages
+## Fig S4 — Bacteria PD/PG summary (three aligned bar panels)
 ##
 ## Input:
 ##   - sources/FigS4.txt (tab-delimited; header required)
 ##     Required columns:
-##       Bacteria, Known_in_MiDAS, Num_of_first_HQ_rep,
-##       impr_20per, impr_50per, impr_100per
+##       Clade, Percent_PD, gtdb_PD, midas_PD, midas_PG
 ##
 ## Output:
-##   - figures/FigS4.pdf
+##   - figures/FigS4.pre.pdf
 ##
-## Notes:
-##   - the dataset was extracted from Supplementary files
 ############################################################
 
 suppressPackageStartupMessages({
   library(ggplot2)
-  library(dplyr)
   library(tidyr)
-  library(scales)
-  library(ggsci)
+  library(dplyr)
   library(ggpubr)
 })
 
 if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
 
-df <- read.table("sources/FigS4.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+data <- read.table("sources/FigS4.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 
-required_cols <- c(
-  "Bacteria", "Known_in_MiDAS", "Num_of_first_HQ_rep",
-  "impr_20per", "impr_50per", "impr_100per"
-)
-missing_cols <- setdiff(required_cols, colnames(df))
+required_cols <- c("Clade", "Percent_PD", "gtdb_PD", "midas_PD", "midas_PG")
+missing_cols <- setdiff(required_cols, colnames(data))
 if (length(missing_cols) > 0) {
   stop("Missing required columns in sources/FigS4.txt: ", paste(missing_cols, collapse = ", "))
 }
 
-# ordering
-bacteria_levels <- rev(unique(df$Bacteria))
+clade_levels <- rev(unique(data$Clade))
 
 # ----------------------------- #
-# Panel a: improvement proportions (faceted stacked bars)
+# Panel 1: Total PD (Percent_PD)
 # ----------------------------- #
-df_long <- df %>%
-  pivot_longer(
-    cols = starts_with("impr_"),
-    names_to = "improvement",
-    values_to = "count"
-  ) %>%
-  mutate(
-    improved  = count / Known_in_MiDAS,
-    remaining = 1 - improved
-  ) %>%
-  pivot_longer(
-    cols = c(improved, remaining),
-    names_to = "type",
-    values_to = "value"
-  ) %>%
-  mutate(
-    # For the "remaining" part, show the remaining count (Known_in_MiDAS - improved_count)
-    count = ifelse(type == "remaining", Known_in_MiDAS - count, count),
-    improvement = factor(
-      improvement,
-      levels = c("impr_20per", "impr_50per", "impr_100per"),
-      labels = c("20%", "50%", "100%")
-    ),
-    type = factor(type, levels = c("remaining", "improved")),
-    Bacteria = factor(Bacteria, levels = bacteria_levels)
-  )
+data_selected_TPD <- data[, c("Clade", "Percent_PD")]
+data_selected_TPD$Clade <- factor(data_selected_TPD$Clade, levels = clade_levels)
 
-plot1 <- ggplot(df_long, aes(x = value, y = Bacteria, fill = type)) +
-  geom_bar(stat = "identity") +
+data_long1 <- tidyr::pivot_longer(
+  data_selected_TPD,
+  cols = "Percent_PD",
+  names_to = "variable",
+  values_to = "value"
+)
+
+p1 <- ggplot(data_long1, aes(x = value, y = Clade)) +
+  geom_bar(
+    aes(y = Clade, x = 100, fill = variable),
+    stat = "identity",
+    position = position_dodge2(width = 1, preserve = "single"),
+    color = "#595959",
+    fill = "white",
+    alpha = 1
+  ) +
+  geom_bar(
+    stat = "identity",
+    position = "identity",
+    color = "#595959",
+    fill = "#A6A6A6",
+    alpha = 1
+  ) +
   geom_text(
-    aes(label = ifelse(value > 0.01, scales::comma(count), "")),
-    position = position_stack(vjust = 0.5),
-    size = 8,
+    aes(x = 20, label = sprintf("%.1f%%", value)),
+    position = position_dodge2(width = 1, preserve = "single"),
+    hjust = 0.2,
+    vjust = 0.5,
     color = "black"
   ) +
-  facet_wrap(~ improvement, nrow = 1, scales = "free_x") +
-  scale_x_continuous(
-    name = "Proportion",
-    labels = scales::label_number(accuracy = 0.1)
-  ) +
-  scale_y_discrete(name = NULL) +
-  scale_fill_npg(
-    name = "",
-    labels = c("Unimproved lineages", "Lineages with improved species diversity")
-  ) +
-  theme_bw() +
+  labs(x = "", y = "") +
   theme(
-    legend.position = "top",
-    axis.text.x = element_text(hjust = 0.5, color = "black"),
-    axis.text.y = element_text(hjust = 0.5, color = "black"),
-    text = element_text(size = 28)
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank()
   )
 
 # ----------------------------- #
-# Panel b: First HQ representatives (log10 x-axis)
+# Panel 2: Relative taxon PD (gtdb_PD vs midas_PD)
 # ----------------------------- #
-plot2 <- ggplot(df, aes(x = Num_of_first_HQ_rep, y = Bacteria)) +
-  geom_bar(stat = "identity", fill = "#f4b3ad") +
+data_selected_RPD <- data[, c("Clade", "gtdb_PD", "midas_PD")]
+data_selected_RPD$Clade <- factor(data_selected_RPD$Clade, levels = clade_levels)
+
+data_long2 <- tidyr::pivot_longer(
+  data_selected_RPD,
+  cols = c("gtdb_PD", "midas_PD"),
+  names_to = "variable",
+  values_to = "value"
+)
+
+p2 <- ggplot(data_long2, aes(y = Clade, x = value, fill = variable)) +
+  geom_bar(
+    aes(y = Clade, x = 100, fill = variable),
+    stat = "identity",
+    position = position_dodge2(width = 1, preserve = "single"),
+    color = "#595959",
+    fill = "white",
+    alpha = 1
+  ) +
+  geom_bar(
+    stat = "identity",
+    position = position_dodge2(width = 1, preserve = "single")
+  ) +
+  labs(x = "", y = "") +
+  scale_fill_manual(values = c("gtdb_PD" = "#E1872799", "midas_PD" = "#7876B1FF")) +
+  theme_void() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    legend.position = "none"
+  )
+
+# ----------------------------- #
+# Panel 3: MiDAS PG (midas_PG)
+# ----------------------------- #
+data_selected_PG <- data[, c("Clade", "midas_PG")]
+data_selected_PG$Clade <- factor(data_selected_PG$Clade, levels = clade_levels)
+
+data_long3 <- tidyr::pivot_longer(
+  data_selected_PG,
+  cols = "midas_PG",
+  names_to = "variable",
+  values_to = "value"
+)
+
+p3 <- ggplot(data_long3, aes(x = value, y = Clade, fill = variable)) +
+  geom_bar(
+    aes(y = Clade, x = 100, fill = variable),
+    stat = "identity",
+    position = position_dodge2(width = 1, preserve = "single"),
+    color = "#595959",
+    fill = "white",
+    alpha = 1
+  ) +
+  geom_bar(stat = "identity", position = "dodge") +
   geom_text(
-    aes(label = scales::comma(Num_of_first_HQ_rep)),
-    hjust = 1.5,
-    size = 8,
+    aes(x = 20, label = sprintf("%.1f%%", value)),
+    position = position_dodge2(width = 1, preserve = "single"),
+    hjust = 0.2,
+    vjust = 0.5,
     color = "black"
   ) +
-  scale_x_continuous(
-    name = "First HQ representatives",
-    trans = "log10"
-  ) +
-  scale_y_discrete(name = NULL, limits = bacteria_levels) +
-  theme_bw() +
+  scale_fill_manual(values = c("midas_PG" = "#7876B1FF")) +
+  labs(x = "", y = "") +
+  theme_void() +
   theme(
-    axis.text.y = element_blank(),
-    axis.title.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    axis.text.x = element_text(hjust = 0.5, color = "black"),
-    text = element_text(size = 28)
-  ) +
-  labs(title = "")
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    legend.position = "none"
+  )
 
 # ----------------------------- #
 # Combine and export
 # ----------------------------- #
-blank_space <- ggplot() + theme_void()
-
-right_col <- ggpubr::ggarrange(
-  blank_space,
-  plot2,
-  ncol = 1,
-  heights = c(0.2, 2.0),
-  labels = c("", "b"),
-  font.label = list(size = 24, face = "bold")
-)
-
 p_combined <- ggpubr::ggarrange(
-  plot1,
-  right_col,
-  ncol = 2,
-  widths = c(6, 2),
-  labels = c("a"),
-  label.x = 0.01,
-  label.y = 0.9,
-  font.label = list(size = 24, color = "black")
+  p1, p2, p3,
+  ncol = 3,
+  common.legend = TRUE,
+  legend = "bottom",
+  widths = c(5, 2.5, 1.5)
 )
 
 p_combined
 
-ggsave(p_combined, filename = "figures/FigS4.pdf", width = 18, height = 9)
+ggsave("figures/FigS4.pre.pdf", p_combined, width = 9, height = 12)
 
 writeLines(capture.output(sessionInfo()), "../envs/FigS4.sessionInfo.txt")

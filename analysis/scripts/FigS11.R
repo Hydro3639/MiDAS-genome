@@ -1,13 +1,13 @@
 ############################################################
-## Fig S7 — Top 10 phyla by recovered MAGs (top) and spReps (bottom, mirrored)
+## Fig S11 — Top 10 phyla by recovered MAGs (top) and spReps (bottom, mirrored)
 ##
 ## Input:
-##   - sources/FigS7.tsv (tab-delimited; header required)
+##   - sources/FigS11.tsv (tab-delimited; header required)
 ##     Expected columns:
 ##       phylum, NumberofMAGs, NumberofspRep
 ##
 ## Output:
-##   - figures/FigS7.pdf
+##   - figures/FigS11.pdf
 ##
 ## Notes:
 ##   - the dataset was extracted from Supplementary files
@@ -27,7 +27,7 @@ if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
 # 1) Read input file
 # ----------------------------- #
 data_raw <- read.table(
-  "sources/FigS7.tsv",
+  "sources/FigS11.tsv",
   header = TRUE, sep = "\t",
   stringsAsFactors = FALSE,
   check.names = FALSE
@@ -36,7 +36,7 @@ data_raw <- read.table(
 required_cols <- c("phylum", "NumberofMAGs", "NumberofspRep")
 missing_cols <- setdiff(required_cols, colnames(data_raw))
 if (length(missing_cols) > 0) {
-  stop("Missing required columns in sources/FigS7.tsv: ", paste(missing_cols, collapse = ", "))
+  stop("Missing required columns in sources/FigS11.tsv: ", paste(missing_cols, collapse = ", "))
 }
 
 # ----------------------------- #
@@ -138,7 +138,7 @@ p_combined <- p_phylum.genome / p_phylum.species +
 
 print(p_combined)
 
-ggsave("figures/FigS7.pdf", p_combined, width = 14, height = 10)
+ggsave("figures/FigS11.pdf", p_combined, width = 14, height = 10)
 
 
-writeLines(capture.output(sessionInfo()), "../envs/FigS7.sessionInfo.txt")
+writeLines(capture.output(sessionInfo()), "../envs/FigS11.sessionInfo.txt")

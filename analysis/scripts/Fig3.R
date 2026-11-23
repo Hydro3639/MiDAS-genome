@@ -1,62 +1,47 @@
 ############################################################
-## Figure 3 — MAG recovery, community recovery, and core genera
-##
-## Panels:
-##   a) Continental distribution of HQ and MQ MAGs
-##   b) Microbial community recovery estimates based on
-##      datasets from this study and external datasets
-##   c) Number of HQ MAGs recovered for MiDAS core genera
-##
-## Inputs:
+## Input:
 ##   - sources/Fig3b.xlsx
-##       Sheet: GTDB.r226
-##   - sources/Fig3b.xlsx
-##       Sheet: GWMC.DK
+##     Sheet: "GTDB.r226" (skip = 1)
+##     Required columns:
+##       SA.ID, Continent, GTDB.hq.ratio, GTDB.all.ratio,
+##       midas.hq.mOTUs.ratio, midas.all.mOTUs.ratio,
+##       midas.allMAGs.ratio
+##     Sheet: "GWMC.DK"
+##     Required columns:
+##       Accession, ratio, Group, Continent
+##   - sources/Fig3b_GWASMC_recovery.tsv
+##     Required columns:
+##       Dataset, SampleID, GWASMC_HQ, GWASMC_HQMQ
 ##   - sources/Fig3c.xlsx
-##       Sheet: Genus
+##     Sheet: "Genus"
+##     Required columns:
+##       Genus, No.of_HQ_MAGs, Category
 ##
 ## Output:
-##   - figures/Fig.3.pdf
-##
-## Notes:
-##   - The script should be run from the analysis directory.
-##   - Panel labels and the shared legend are constructed
-##     explicitly to preserve the manuscript layout.
+##   - figures/Fig3.pdf
+##   - ../envs/Fig3.sessionInfo.txt
 ############################################################
 
 suppressPackageStartupMessages({
   library(ggplot2)
-  library(dplyr)
-  library(tidyr)
   library(readxl)
-  library(scales)
   library(patchwork)
+  library(tidyr)
+  library(scales)
   library(grid)
-  library(cowplot)
 })
 
-# ----------------------------- #
-# Input and output paths
-# ----------------------------- #
+input_reference <- "sources/Fig3b.xlsx"
+input_gwasmc <- "sources/Fig3b_GWASMC_recovery.tsv"
+input_core <- "sources/Fig3c.xlsx"
+output_figure <- "figures/Fig3.pdf"
 
-input_recovery <- "sources/Fig3b.xlsx"
-input_external <- "sources/Fig3b.xlsx"
-input_core     <- "sources/Fig3c.xlsx"
-
-output_figure <- "figures/Fig.3.pdf"
-
-if (!dir.exists("figures")) {
-  dir.create("figures", recursive = TRUE)
+required_files <- c(input_reference, input_gwasmc, input_core)
+if (any(!file.exists(required_files))) {
+  stop("Missing input file(s): ", paste(required_files[!file.exists(required_files)], collapse = ", "))
 }
-
-required_files <- c(input_recovery, input_external, input_core)
-missing_files <- required_files[!file.exists(required_files)]
-
-if (length(missing_files) > 0) {
-  stop(
-    "Missing input file(s): ",
-    paste(missing_files, collapse = ", ")
-  )
+for (directory in c("figures", "../envs")) {
+  if (!dir.exists(directory)) dir.create(directory, recursive = TRUE)
 }
 
 # ============================================================
@@ -95,9 +80,11 @@ continent_mag_long <- tidyr::gather(
 
 continent_mag_long$Variable <- factor(
   continent_mag_long$Variable,
-  levels = rev(c("mqmag_num", "hqmag_num"))
+  levels = c("mqmag_num", "hqmag_num")
 )
 
+## should auto number generation like what i did in the other R script,
+## but is fine here right now
 continent_labels <- c(
   "Asia" = "Asia\n(n=18)",
   "Europe" = "Europe\n(n=30)",
@@ -117,8 +104,9 @@ p_continents <- ggplot(
     color = NA
   ) +
   scale_fill_manual(
-    values = c("#f4b3ad", "#ed665dFF"),
-    labels = c("MQ", "HQ")
+    values = c("mqmag_num" = "#f4b3ad", "hqmag_num" = "#ed665dFF"),
+    breaks = c("mqmag_num", "hqmag_num"),
+    labels = c("mqmag_num" = "MQ", "hqmag_num" = "HQ")
   ) +
   geom_text(
     aes(label = scales::comma(Value), y = Value),
@@ -157,280 +145,168 @@ p_continents <- ggplot(
   )
 
 # ============================================================
-# Shared dataset labels and colors for Panel b
+# Panel b: Community recovery
+# include gwasmc sp (HQ, HQ+MQ) for the ms revision
+# GWASMC-HQ was followed the original GWASMC paper,
+# no tRNA/rRNA genes were required.
+# GTDB and MiDAS follow the stringent MIMAG standard.
 # ============================================================
+
+require_columns <- function(data, columns, source) {
+  missing <- setdiff(columns, names(data))
+  if (length(missing)) stop("Missing columns in ", source, ": ", paste(missing, collapse = ", "))
+}
+require_unique <- function(values, source) {
+  if (anyNA(values) || any(!nzchar(values)) || anyDuplicated(values)) {
+    stop("Missing or duplicate identifiers in ", source)
+  }
+}
+write_tsv <- function(data, path) {
+  write.table(data, path, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
+}
 
 recovery_levels <- c(
   "GTDB-HQ species-rep",
   "GTDB-HQ+MQ species-rep",
+  "GWASMC-HQ species-rep",
+  "GWASMC-HQ+MQ species-rep",
   "MiDAS-HQ species-rep",
   "MiDAS-HQ+MQ species-rep",
   "MiDAS-HQ+MQ MAGs"
 )
-
 recovery_colors <- c(
-  "GTDB-HQ species-rep"     = "#1E90FF",
-  "GTDB-HQ+MQ species-rep"  = "#00468B",
-  "MiDAS-HQ species-rep"    = "#C2A5CF",
+  "GTDB-HQ species-rep" = "#1E90FF",
+  "GTDB-HQ+MQ species-rep" = "#00468B",
+  "GWASMC-HQ species-rep" = "#8DC884",
+  "GWASMC-HQ+MQ species-rep" = "#2E7D32",
+  "MiDAS-HQ species-rep" = "#C2A5CF",
   "MiDAS-HQ+MQ species-rep" = "#7B3294",
-  "MiDAS-HQ+MQ MAGs"        = "#FFD700"
+  "MiDAS-HQ+MQ MAGs" = "#FFD700"
 )
+continent_levels <- c("Africa", "Asia", "Europe", "North America", "Oceania", "South America")
 
-# ============================================================
-# Panel b1: Recovery estimates for datasets from this study
-# ============================================================
-
-recovery_raw <- readxl::read_excel(
-  input_recovery,
-  sheet = "GTDB.r226",
-  skip = 1
+# Select the prepared Sylph recovery columns for the 83 metagenomes generated in this study.
+study_raw <- as.data.frame(read_excel(input_reference, sheet = "GTDB.r226", skip = 1))
+study_columns <- c(
+  "SA.ID", "Continent", "GTDB.hq.ratio", "GTDB.all.ratio",
+  "midas.hq.mOTUs.ratio", "midas.all.mOTUs.ratio", "midas.allMAGs.ratio"
 )
+require_columns(study_raw, study_columns, "GTDB.r226")
+study <- study_raw[!is.na(study_raw$SA.ID) & grepl("^[0-9]{3}-", study_raw$SA.ID), study_columns]
+require_unique(study$SA.ID, "study workbook")
+stopifnot(nrow(study) == 83L, !anyNA(study), all(study$Continent %in% continent_levels))
 
-required_recovery_columns <- c(
-  "SA.ID",
-  "GTDB.hq_ratio",
-  "GTDB_all_ratio",
-  "MiDAS.hq.mOTUs_ratio",
-  "MiDAS.all.mOTUs_ratio",
-  "MiDAS.all.MAGs_ratio",
-  "Continent"
+external <- as.data.frame(read_excel(input_reference, sheet = "GWMC.DK"))
+require_columns(external, c("Accession", "ratio", "Group", "Continent"), "GWMC.DK")
+require_unique(paste(external$Accession, external$Group, sep = "::"), "external sample/group pairs")
+external_groups <- c(
+  "GTDB-HQ_spRep", "GTDB-HQ-MQ_spRep", "MiDAS-HQ_spRep",
+  "MiDAS-HQ-MQ_spRep", "MiDAS-HQ-MQ_MAGs"
 )
-
-missing_recovery_columns <- setdiff(
-  required_recovery_columns,
-  colnames(recovery_raw)
-)
-
-if (length(missing_recovery_columns) > 0) {
-  stop(
-    "Missing columns in ",
-    input_recovery,
-    ": ",
-    paste(missing_recovery_columns, collapse = ", ")
-  )
+stopifnot(setequal(unique(external$Group), external_groups))
+external_meta <- unique(external[c("Accession", "Continent")])
+require_unique(external_meta$Accession, "external metadata")
+stopifnot(nrow(external_meta) == 295L, all(external_meta$Continent %in% continent_levels))
+for (group in external_groups) {
+  stopifnot(setequal(external$Accession[external$Group == group], external_meta$Accession))
 }
 
-recovery_selected <- recovery_raw[
-  1:83,
-  required_recovery_columns
-]
+# GWASMC percentages have already been calculated (sylph-based) before running R.
+gwasmc <- read.delim(input_gwasmc, check.names = FALSE, stringsAsFactors = FALSE)
+require_columns(gwasmc, c("Dataset", "SampleID", "GWASMC_HQ", "GWASMC_HQMQ"), input_gwasmc)
 
-recovery_long <- tidyr::gather(
-  recovery_selected,
-  key = "dataset",
-  value = "Ratio",
-  -SA.ID,
-  -Continent
+sample_metadata <- rbind(
+  data.frame(Dataset = "Study", SampleID = study$SA.ID, Continent = study$Continent),
+  data.frame(Dataset = "External", SampleID = external_meta$Accession, Continent = external_meta$Continent)
 )
+sample_key <- function(data) paste(data$Dataset, data$SampleID, sep = "::")
+require_unique(sample_key(gwasmc), input_gwasmc)
+gwasmc$Continent <- sample_metadata$Continent[match(sample_key(gwasmc), sample_key(sample_metadata))]
 
-recovery_long$dataset <- factor(
-  recovery_long$dataset,
-  levels = c(
-    "GTDB.hq_ratio",
-    "GTDB_all_ratio",
-    "MiDAS.hq.mOTUs_ratio",
-    "MiDAS.all.mOTUs_ratio",
-    "MiDAS.all.MAGs_ratio"
-  ),
-  labels = recovery_levels
+study_map <- c(
+  "GTDB.hq.ratio" = "GTDB-HQ species-rep",
+  "GTDB.all.ratio" = "GTDB-HQ+MQ species-rep",
+  "midas.hq.mOTUs.ratio" = "MiDAS-HQ species-rep",
+  "midas.all.mOTUs.ratio" = "MiDAS-HQ+MQ species-rep",
+  "midas.allMAGs.ratio" = "MiDAS-HQ+MQ MAGs"
 )
-
-p_minimap2.mapping <- ggplot(
-  recovery_long,
-  aes(x = Continent, y = Ratio, fill = dataset)
-) +
-  geom_boxplot(
-    alpha = 0.7,
-    width = 0.9,
-    outlier.shape = NA
-  ) +
-  geom_point(
-    aes(fill = dataset),
-    alpha = 0.7,
-    shape = 21,
-    size = 2,
-    position = position_jitterdodge(
-      jitter.width = 0.25,
-      dodge.width = 0.9
-    )
-  ) +
-  scale_fill_manual(
-    values = recovery_colors,
-    breaks = recovery_levels,
-    drop = FALSE
-  ) +
-  scale_y_continuous(
-    limits = c(0, 90),
-    breaks = seq(0, 90, by = 15)
-  ) +
-  scale_x_discrete(labels = continent_labels) +
-  labs(
-    x = "",
-    y = "Microbial community\nrecovery estimation (%)",
-    fill = ""
-  ) +
-  theme_bw(base_size = 26) +
-  theme(
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor = element_blank(),
-    text = element_text(size = 26),
-    axis.text = element_text(color = "black"),
-    legend.position = "bottom",
-    legend.justification = "center",
-    legend.direction = "horizontal",
-    legend.box = "horizontal",
-    legend.title = element_blank(),
-    legend.text = element_text(size = 16),
-    legend.key.size = unit(1, "cm"),
-    legend.key.width = unit(1.0, "cm"),
-    legend.key.height = unit(1.0, "cm"),
-    legend.spacing.x = unit(1.0, "cm"),
-    legend.spacing.y = unit(0.5, "cm"),
-    legend.background = element_blank(),
-    legend.box.background = element_blank(),
-    legend.key = element_blank(),
-    legend.title.align = 0,
-    panel.background = element_blank(),
-    plot.background = element_blank()
-  )
-
-# ============================================================
-# Panel b2: Recovery estimates for external datasets
-# ============================================================
-
-external_data <- readxl::read_excel(
-  input_external,
-  sheet = "GWMC.DK",
-  skip = 0
+study_long <- do.call(rbind, lapply(names(study_map), function(column) {
+  data.frame(Dataset = "Study", SampleID = study$SA.ID, Continent = study$Continent,
+             Group = unname(study_map[column]), ratio = as.numeric(study[[column]]),
+             stringsAsFactors = FALSE)
+}))
+external_map <- setNames(
+  c("GTDB-HQ species-rep", "GTDB-HQ+MQ species-rep", "MiDAS-HQ species-rep",
+    "MiDAS-HQ+MQ species-rep", "MiDAS-HQ+MQ MAGs"), external_groups
 )
-
-required_external_columns <- c(
-  "Continent",
-  "Group",
-  "ratio"
+external_long <- data.frame(
+  Dataset = "External", SampleID = external$Accession, Continent = external$Continent,
+  Group = unname(external_map[external$Group]), ratio = as.numeric(external$ratio),
+  stringsAsFactors = FALSE
 )
-
-missing_external_columns <- setdiff(
-  required_external_columns,
-  colnames(external_data)
+gw_long <- rbind(
+  data.frame(gwasmc[c("Dataset", "SampleID", "Continent")], Group = "GWASMC-HQ species-rep", ratio = gwasmc$GWASMC_HQ),
+  data.frame(gwasmc[c("Dataset", "SampleID", "Continent")], Group = "GWASMC-HQ+MQ species-rep", ratio = gwasmc$GWASMC_HQMQ)
 )
+plot_data <- rbind(study_long, external_long, gw_long)
 
-if (length(missing_external_columns) > 0) {
-  stop(
-    "Missing columns in ",
-    input_external,
-    ": ",
-    paste(missing_external_columns, collapse = ", ")
-  )
+require_unique(paste(plot_data$Dataset, plot_data$SampleID, plot_data$Group, sep = "::"), "plot data")
+
+plot_data$Group <- factor(plot_data$Group, levels = recovery_levels)
+plot_data$Continent <- factor(plot_data$Continent, levels = continent_levels)
+plot_data <- plot_data[order(match(plot_data$Dataset, c("Study", "External")),
+                             plot_data$Continent, plot_data$Group, plot_data$SampleID), ]
+
+summarize_recovery <- function(data, by) {
+  groups <- interaction(data[by], drop = TRUE, lex.order = TRUE)
+  do.call(rbind, lapply(split(data, groups), function(part) {
+    cbind(part[1L, by, drop = FALSE],
+          N = nrow(part), Mean_pct = mean(part$ratio), Median_pct = median(part$ratio),
+          Q25_pct = unname(quantile(part$ratio, 0.25, type = 7)),
+          Q75_pct = unname(quantile(part$ratio, 0.75, type = 7)),
+          Min_pct = min(part$ratio), Max_pct = max(part$ratio))
+  }))
 }
+summary_statistics <- summarize_recovery(plot_data, c("Dataset", "Group"))
+continent_statistics <- summarize_recovery(plot_data, c("Dataset", "Continent", "Group"))
+#write_tsv(plot_data, "results/Fig3b_plot_data.tsv")
+#write_tsv(summary_statistics, "results/Fig3b_summary_statistics.tsv")
+#write_tsv(continent_statistics, "results/Fig3b_continent_statistics.tsv")
 
-external_data <- external_data %>%
-  mutate(
-    Continent = factor(
-      Continent,
-      levels = sort(unique(Continent))
+# Grouped boxplots and sample points as the preprint did.
+make_recovery_plot <- function(data, title) {
+  samples <- unique(data[c("SampleID", "Continent")])
+  counts <- table(factor(samples$Continent, levels = continent_levels))
+  labels <- setNames(paste0(names(counts), "\n(n=", as.integer(counts), ")"), names(counts))
+  ggplot(data, aes(x = Continent, y = ratio, fill = Group,
+                   group = interaction(Continent, Group))) +
+    geom_boxplot(width = 0.78, alpha = 0.7, outlier.shape = NA,
+                 linewidth = 0.45, position = position_dodge(width = 0.86)) +
+    geom_point(shape = 21, size = 1.65, stroke = 0.3, alpha = 0.6,
+               position = position_jitterdodge(jitter.width = 0.22, dodge.width = 0.86, seed = 20261111)) +
+    scale_fill_manual(values = recovery_colors, breaks = recovery_levels, drop = FALSE) +
+    scale_x_discrete(labels = labels, drop = TRUE) +
+    scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 20),
+                       expand = expansion(mult = c(0.01, 0.025))) +
+    labs(x = NULL, y = "Microbial community\nrecovery estimation (%)", fill = NULL, title = title) +
+    guides(fill = guide_legend(nrow = 1, byrow = TRUE)) +
+    theme_bw(base_size = 22) +
+    theme(
+      panel.grid.major.x = element_blank(), panel.grid.minor = element_blank(),
+      panel.grid.major.y = element_line(color = "#E5E5E5", linewidth = 0.3),
+      axis.text = element_text(color = "black"), axis.text.x = element_text(size = 19),
+      plot.title = element_text(size = 24, hjust = 0.5, margin = margin(b = 14)),
+      legend.position = "bottom", legend.direction = "horizontal", legend.box = "horizontal",
+      legend.title = element_blank(), legend.text = element_text(size = 16),
+      legend.key.width = grid::unit(0.5, "cm"), legend.key.height = grid::unit(0.5, "cm"),
+      legend.spacing.x = grid::unit(0.15, "cm"), legend.box.margin = margin(t = 12),
+      legend.background = element_blank(), legend.key = element_blank(),
+      plot.margin = margin(12, 12, 6, 12)
     )
-  )
-
-# Each external sample is represented by five dataset groups.
-external_continent_counts <- external_data %>%
-  count(Continent) %>%
-  arrange(match(Continent, levels(external_data$Continent))) %>%
-  mutate(
-    n = n / 5,
-    label = paste0(
-      as.character(Continent),
-      "\n(n=",
-      n,
-      ")"
-    )
-  )
-
-external_data <- external_data %>%
-  left_join(
-    external_continent_counts %>%
-      select(Continent, label),
-    by = "Continent"
-  ) %>%
-  mutate(
-    continent_label = factor(
-      label,
-      levels = external_continent_counts$label
-    )
-  )
-
-external_data$Group <- factor(
-  external_data$Group,
-  levels = c(
-    "GTDB-HQ_spRep",
-    "GTDB-HQ-MQ_spRep",
-    "MiDAS-HQ_spRep",
-    "MiDAS-HQ-MQ_spRep",
-    "MiDAS-HQ-MQ_MAGs"
-  ),
-  labels = recovery_levels
-)
-
-p_sylph.mapping <- ggplot(
-  external_data,
-  aes(
-    x = continent_label,
-    y = ratio,
-    fill = Group,
-    group = interaction(continent_label, Group)
-  )
-) +
-  geom_boxplot(
-    width = 0.7,
-    alpha = 0.7,
-    outlier.shape = NA,
-    position = position_dodge(width = 0.8)
-  ) +
-  geom_point(
-    alpha = 0.7,
-    shape = 21,
-    size = 2,
-    position = position_jitterdodge(
-      jitter.width = 0.25,
-      dodge.width = 0.8
-    )
-  ) +
-  scale_fill_manual(
-    values = recovery_colors,
-    breaks = recovery_levels,
-    drop = FALSE
-  ) +
-  labs(
-    x = NULL,
-    y = "Microbial community\nrecovery estimation (%)",
-    fill = ""
-  ) +
-  scale_y_continuous(
-    limits = c(0, 90),
-    breaks = seq(0, 90, 15)
-  ) +
-  theme_bw(base_size = 26) +
-  theme(
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.text.x = element_text(color = "black"),
-    axis.text.y = element_blank(),
-    axis.title.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    legend.position = "bottom",
-    legend.justification = "center",
-    legend.direction = "horizontal",
-    legend.box = "horizontal",
-    legend.title = element_blank(),
-    legend.text = element_text(size = 16),
-    legend.key.size = unit(1, "cm"),
-    legend.key.width = unit(1.0, "cm"),
-    legend.key.height = unit(1.0, "cm"),
-    legend.spacing.x = unit(1.0, "cm"),
-    panel.background = element_rect(fill = "white"),
-    legend.background = element_blank(),
-    legend.key = element_blank()
-  )
+}
+p_study <- make_recovery_plot(plot_data[plot_data$Dataset == "Study", ], "Datasets from this study")
+p_external <- make_recovery_plot(plot_data[plot_data$Dataset == "External", ], "External datasets")
+p_external_shared <- p_external + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), axis.ticks.y = element_blank())
 
 # ============================================================
 # Panel c: HQ MAG recovery across MiDAS core genera
@@ -517,7 +393,7 @@ p_ge <- ggplot(
       y = No.of_HQ_MAGs,
       label = round(No.of_HQ_MAGs, 3)
     ),
-    vjust = -3.5,
+    vjust = -3,
     size = 6
   ) +
   labs(
@@ -536,8 +412,13 @@ p_ge <- ggplot(
   )
 
 # ============================================================
-# Panel-label helper
+# Assemble Figure 3
 # ============================================================
+
+# Panel b keeps its own shared legend within the full figure.
+p_recovery <- (p_study | p_external_shared) +
+  plot_layout(widths = c(5, 6), guides = "collect") &
+  theme(legend.position = "bottom")
 
 make_panel_label <- function(
     letter,
@@ -565,127 +446,15 @@ label_a <- make_panel_label("a")
 label_b <- make_panel_label("b")
 label_c <- make_panel_label("c")
 
-# ============================================================
-# Construct the shared legend for Panel b
-# ============================================================
-
-extract_real_legend <- function(plot_object) {
-  guide_grobs <- cowplot::get_plot_component(
-    plot_object,
-    "guide-box",
-    return_all = TRUE
-  )
-  
-  real_guide <- NULL
-  
-  for (guide in guide_grobs) {
-    if (!inherits(guide, "zeroGrob")) {
-      real_guide <- guide
-      break
-    }
-  }
-  
-  if (is.null(real_guide)) {
-    stop("No non-empty legend was found.")
-  }
-  
-  real_guide
-}
-
-legend_plot <- ggplot(
-  data.frame(
-    Dataset = factor(
-      recovery_levels,
-      levels = recovery_levels
-    )
-  ),
-  aes(x = Dataset, fill = Dataset)
-) +
-  geom_bar() +
-  scale_fill_manual(
-    values = recovery_colors,
-    breaks = recovery_levels
-  ) +
-  guides(
-    fill = guide_legend(
-      nrow = 1,
-      byrow = TRUE,
-      keywidth = unit(1.2, "cm"),
-      keyheight = unit(1.0, "cm")
-    )
-  ) +
-  theme_void() +
-  theme(
-    legend.position = "bottom",
-    legend.direction = "horizontal",
-    legend.box = "horizontal",
-    legend.title = element_blank(),
-    legend.text = element_text(size = 20),
-    legend.key.width = unit(1.2, "cm"),
-    legend.key.height = unit(1.0, "cm"),
-    legend.key.spacing.x = unit(1.2, "cm")
-  )
-
-shared_legend <- extract_real_legend(legend_plot)
-
-legend_block <- cowplot::ggdraw() +
-  cowplot::draw_grob(
-    shared_legend,
-    x = 0,
-    y = 0,
-    width = 1,
-    height = 1
-  )
-
-# ============================================================
-# Prepare Panel b subplots
-# ============================================================
-
-p_b1_noleg <- p_minimap2.mapping +
-  theme(legend.position = "none") +
-  labs(title = "Datasets from this study") +
-  theme(
-    plot.title = element_text(
-      size = 24,
-      hjust = 0.5
-    )
-  )
-
-p_b2_noleg <- p_sylph.mapping +
-  theme(legend.position = "none") +
-  labs(title = "External datasets") +
-  theme(
-    plot.title = element_text(
-      size = 24,
-      hjust = 0.5
-    )
-  )
-
-p_bottom_plots <- (p_b1_noleg | p_b2_noleg) +
-  plot_layout(widths = c(4.5, 5.5))
-
-p_bottom <- (p_bottom_plots / legend_block) +
-  plot_layout(heights = c(1, 0.1))
-
-# ============================================================
-# Assemble Figure 3
-# ============================================================
-
 top_left_block <- label_a / p_continents +
   plot_layout(heights = c(0.04, 1))
-
 top_right_block <- label_c / p_ge +
   plot_layout(heights = c(0.04, 1))
-
 p_top <- top_left_block | top_right_block
-
-bottom_block <- label_b / p_bottom +
+bottom_block <- label_b / p_recovery +
   plot_layout(heights = c(0.04, 1))
-
 p_combined <- (p_top / bottom_block) +
   plot_layout(heights = c(1.5, 2.7))
-
-p_combined
 
 # ============================================================
 # Export
@@ -695,15 +464,8 @@ ggsave(
   filename = output_figure,
   plot = p_combined,
   width = 24,
-  height = 16
+  height = 16,
+  device = grDevices::cairo_pdf,
+  bg = "white"
 )
-
-# Record the R environment used to generate this figure.
-if (!dir.exists("../envs")) {
-  dir.create("../envs", recursive = TRUE)
-}
-
-writeLines(
-  capture.output(sessionInfo()),
-  "../envs/Fig.3.sessionInfo.txt"
-)
+writeLines(capture.output(sessionInfo()), "../envs/Fig3.sessionInfo.txt")

@@ -9,8 +9,8 @@
 ## Panels:
 ##   a) Genus-by-pathway trait conservation heatmap
 ##   b) Fraction of core genera classified as mixed for each pathway
-##   c) Comparison of mixed fractions at genus level and among
-##      species represented by at least three or five HQ MAGs
+##   c) Corrected species mixed fractions versus within-genus null means,
+##      at three or five HQ MAGs per species (specific mixed parent pairs)
 ##
 ## Inputs:
 ##   - sources/FigS7a.tsv
@@ -26,10 +26,13 @@
 ##   - sources/FigS7d.tsv
 ##       Species-level follow-up for genus-mixed pathways,
 ##       restricted to species represented by at least five MAGs
+##   - sources/FigS7_null_by_pathway.tsv (completed null summaries)
 ##
 ## Outputs:
 ##   - figures/FigS7.pdf
-##   - figures/FigS7.png
+##   # - figures/FigS7.png (600 dpi; export is commented out)
+##   - ../envs/FigS7.sessionInfo.txt
+## This script reads prepared sources and generates the figure only
 ############################################################
 
 suppressPackageStartupMessages({
@@ -45,32 +48,24 @@ suppressPackageStartupMessages({
 # Input and output paths
 # ----------------------------- #
 
+# the input files
 conservation_file <- "sources/FigS7a.tsv"
 status_file       <- "sources/FigS7b.tsv"
 species_min3_file <- "sources/FigS7c.tsv"
 species_min5_file <- "sources/FigS7d.tsv"
+null_file         <- "sources/FigS7_null_by_pathway.tsv"
 
-output_pdf <- "figures/FigS7.pdf"
-
-if (!dir.exists("figures")) {
-  dir.create("figures", recursive = TRUE)
-}
+dir.create("figures", recursive = TRUE, showWarnings = FALSE)
+dir.create("../envs", recursive = TRUE, showWarnings = FALSE)
 
 required_files <- c(
   conservation_file,
   status_file,
   species_min3_file,
-  species_min5_file
+  species_min5_file,
+  null_file
 )
 
-missing_files <- required_files[!file.exists(required_files)]
-
-if (length(missing_files) > 0) {
-  stop(
-    "Missing input file(s): ",
-    paste(missing_files, collapse = ", ")
-  )
-}
 
 # ----------------------------- #
 # Read input data
@@ -95,6 +90,7 @@ species_min5 <- readr::read_tsv(
   species_min5_file,
   show_col_types = FALSE
 )
+species_null <- readr::read_tsv(null_file, show_col_types = FALSE)
 
 # ----------------------------- #
 # Validate input columns
@@ -116,69 +112,30 @@ required_status_columns <- c(
 )
 
 required_species_columns <- c(
-  "Pathway",
-  "Status"
+  "Taxon", "Genus", "Pathway", "Status", "n_MAGs"
 )
 
-missing_conservation_columns <- setdiff(
-  required_conservation_columns,
-  colnames(conservation)
-)
-
-missing_status_columns <- setdiff(
-  required_status_columns,
-  colnames(status_summary)
-)
-
-missing_species_min3_columns <- setdiff(
-  required_species_columns,
-  colnames(species_min3)
-)
-
-missing_species_min5_columns <- setdiff(
-  required_species_columns,
-  colnames(species_min5)
-)
-
-if (length(missing_conservation_columns) > 0) {
-  stop(
-    "Missing required columns in ",
-    conservation_file,
-    ": ",
-    paste(missing_conservation_columns, collapse = ", ")
-  )
+# Validate that the prepared species and null tables use the same eligible groups.
+parent_pairs <- conservation %>% filter(Tax_rank == "Genus", Status == "Mixed") %>%
+  transmute(Genus = Taxon, Pathway) %>% distinct()
+for (cutoff in c(3L, 5L)) {
+  x <- if (cutoff == 3L) species_min3 else species_min5
+  if (nrow(anti_join(x, parent_pairs, by = c("Genus", "Pathway"))) > 0L) {
+    stop("Species follow-up contains rows outside specific mixed genus-pathway pairs.")
+  }
+  stopifnot(all(x$n_MAGs >= cutoff),
+    !anyDuplicated(x[c("Taxon", "Genus", "Pathway")]),
+    all(x$Status %in% c("Conserved present", "Mixed", "Conserved absent")))
 }
-
-if (length(missing_status_columns) > 0) {
-  stop(
-    "Missing required columns in ",
-    status_file,
-    ": ",
-    paste(missing_status_columns, collapse = ", ")
-  )
-}
-
-if (length(missing_species_min3_columns) > 0) {
-  stop(
-    "Missing required columns in ",
-    species_min3_file,
-    ": ",
-    paste(missing_species_min3_columns, collapse = ", ")
-  )
-}
-
-if (length(missing_species_min5_columns) > 0) {
-  stop(
-    "Missing required columns in ",
-    species_min5_file,
-    ": ",
-    paste(missing_species_min5_columns, collapse = ", ")
-  )
-}
+needed_null <- c("minimum_MAGs", "Pathway", "n_combinations", "n_mixed", "observed", "null_mean")
 
 # ----------------------------- #
 # Shared plot settings
 # ----------------------------- #
+
+figure_width <- 12
+figure_height <- 12
+#png_dpi <- 600
 
 status_levels <- c(
   "Conserved present",
@@ -194,7 +151,7 @@ status_colors <- c(
 
 pathway_label_map <- c(
   "Glycolysis" = "Glycolysis",
-  "Glyconeogenesis" = "Gluconeogenesis",
+  "Gluconeogenesis" = "Gluconeogenesis",
   "Pentose_phosphate_pathway" = "Pentose phosphate pathway",
   "Pyruvate_oxidation" = "Pyruvate oxidation",
   "TCA_cycle" = "TCA cycle",
@@ -274,7 +231,7 @@ axis_theme <- theme(
   plot.tag = element_text(
     color = "black",
     size = 14,
-    face = "bold"
+    face = "plain"
   )
 )
 
@@ -291,14 +248,6 @@ figs7a_data <- conservation %>%
     ),
     Pathway_label = clean_pathway_labels(Pathway)
   )
-
-if (nrow(figs7a_data) == 0) {
-  stop(
-    "No genus-level rows were found in ",
-    conservation_file,
-    "."
-  )
-}
 
 # Retain the preferred pathway order for pathways present in the data.
 pathway_levels <- preferred_pathway_order[
@@ -385,74 +334,7 @@ p_a <- ggplot(
     plot.margin = margin(5, 5, 5, 5)
   )
 
-p_a
-
-# ============================================================
-# Optional alternative Panel a: Stacked genus fractions
-# this figure was not included in this version
-# ============================================================
-
-p_a_alt <- status_summary %>%
-  filter(Tax_rank == "Genus") %>%
-  mutate(
-    Status = factor(
-      Status,
-      levels = status_levels
-    ),
-    Pathway_label = clean_pathway_labels(Pathway),
-    Pathway_label = factor(
-      Pathway_label,
-      levels = pathway_levels
-    )
-  ) %>%
-  ggplot(
-    aes(
-      x = Pathway_label,
-      y = fraction,
-      fill = Status
-    )
-  ) +
-  geom_col(width = 0.75) +
-  scale_fill_manual(
-    values = status_colors,
-    breaks = status_levels,
-    drop = FALSE
-  ) +
-  scale_y_continuous(
-    labels = scales::label_number(
-      scale = 100,
-      accuracy = 1,
-      suffix = "%"
-    )
-  ) +
-  labs(
-    x = NULL,
-    y = "Fraction of 277 core genera",
-    fill = "Trait status"
-  ) +
-  theme_bw(base_size = 10) +
-  axis_theme +
-  theme(
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1,
-      vjust = 1,
-      color = "black",
-      size = 10.5
-    ),
-    axis.text.y = element_text(
-      color = "black",
-      size = 10.5
-    ),
-    axis.title.y = element_text(
-      color = "black",
-      size = 12
-    ),
-    panel.grid.minor = element_blank(),
-    legend.position = "top"
-  )
-
-p_a_alt
+if (interactive()) print(p_a)
 
 # ============================================================
 # Panel b: Genus-level mixed fraction by pathway
@@ -511,7 +393,6 @@ pathway_order_bc <- levels(
 bar_color <- "#F4A582"
 
 level_fill_colors <- c(
-  "Genus"              = "#3C5488FF",
   "Species ≥3 HQ MAGs" = "#00A087FF",
   "Species ≥5 HQ MAGs" = "#E64B35FF"
 )
@@ -543,7 +424,7 @@ p_b <- ggplot(
       mult = c(0, 0.15)
     )
   ) +
-  scale_y_discrete(drop = FALSE) +
+  scale_y_discrete(drop = FALSE, expand = expansion(add = 0.6)) +
   labs(
     x = "Fraction of mixed genera",
     y = NULL
@@ -556,192 +437,53 @@ p_b <- ggplot(
     plot.margin = margin(5, 5, 5, 5)
   )
 
-p_b
+if (interactive()) print(p_b)
 
 # ============================================================
-# Panel c: Species-level follow-up of genus-mixed pathways
+# Panel c: Corrected species follow-up versus matched null expectations
 # ============================================================
+# Compare observed and null species fractions at the same sample sizes.
+# Four pathways have no eligible species follow-up. Leave them blank, not at 0%.
 
-calculate_species_mixed_fraction <- function(
-    data,
-    level_label
-) {
-  data %>%
-    group_by(
-      Pathway,
-      Status
-    ) %>%
-    summarise(
-      n_taxa = n(),
-      .groups = "drop"
-    ) %>%
-    group_by(Pathway) %>%
-    mutate(
-      total_taxa = sum(n_taxa),
-      fraction = n_taxa / total_taxa
-    ) %>%
-    ungroup() %>%
-    filter(Status == "Mixed") %>%
-    transmute(
-      Pathway,
-      Level = level_label,
-      mixed_fraction = fraction,
-      n_mixed = n_taxa,
-      total_taxa
-    )
-}
-
-genus_mixed <- status_summary %>%
-  filter(
-    Tax_rank == "Genus",
-    Status == "Mixed"
-  ) %>%
-  transmute(
-    Pathway,
-    Level = "Genus",
-    mixed_fraction = fraction,
-    n_mixed = n_taxa,
-    total_taxa
-  )
-
-species_mixed_min3 <- calculate_species_mixed_fraction(
-  species_min3,
-  "Species ≥3 HQ MAGs"
-)
-
-species_mixed_min5 <- calculate_species_mixed_fraction(
-  species_min5,
-  "Species ≥5 HQ MAGs"
-)
-
+figs7c_summary <- species_null %>% mutate(
+  Pathway_label = factor(clean_pathway_labels(Pathway), levels = pathway_order_bc),
+  Level = if_else(minimum_MAGs == 3L, "Species ≥3 HQ MAGs", "Species ≥5 HQ MAGs"),
+  y = as.numeric(Pathway_label) + if_else(minimum_MAGs == 3L, 0.13, -0.13))
 figs7c_data <- bind_rows(
-  genus_mixed,
-  species_mixed_min3,
-  species_mixed_min5
-) %>%
-  mutate(
-    Pathway_label = clean_pathway_labels(Pathway),
-    Level = factor(
-      Level,
-      levels = c(
-        "Genus",
-        "Species ≥3 HQ MAGs",
-        "Species ≥5 HQ MAGs"
-      )
-    )
-  )
-
-# Retain only pathways classified as mixed at genus level.
-pathways_mixed_at_genus <- genus_mixed %>%
-  filter(mixed_fraction > 0) %>%
-  pull(Pathway)
-
-complete_species_grid <- tidyr::expand_grid(
-  Pathway = pathways_mixed_at_genus,
-  Level = c(
-    "Genus",
-    "Species ≥3 HQ MAGs",
-    "Species ≥5 HQ MAGs"
-  )
-)
-
-figs7c_data <- complete_species_grid %>%
-  left_join(
-    figs7c_data,
-    by = c(
-      "Pathway",
-      "Level"
-    )
-  ) %>%
-  mutate(
-    mixed_fraction = replace_na(
-      mixed_fraction,
-      0
-    ),
-    n_mixed = replace_na(
-      n_mixed,
-      0
-    ),
-    Pathway_label = clean_pathway_labels(Pathway),
-    Level = factor(
-      Level,
-      levels = c(
-        "Genus",
-        "Species ≥3 HQ MAGs",
-        "Species ≥5 HQ MAGs"
-      )
-    ),
-    Pathway_label = factor(
-      Pathway_label,
-      levels = pathway_order_bc
-    )
-  )
-
-p_c <- ggplot(
-  figs7c_data,
-  aes(
-    x = mixed_fraction,
-    y = Pathway_label
-  )
-) +
-  geom_point(
-    aes(
-      shape = Level,
-      fill = Level
-    ),
-    size = 2.8,
-    stroke = 0.45,
-    color = "grey15"
-  ) +
-  scale_shape_manual(
-    values = c(
-      "Genus"              = 21,
-      "Species ≥3 HQ MAGs" = 24,
-      "Species ≥5 HQ MAGs" = 22
-    )
-  ) +
-  scale_fill_manual(
-    values = level_fill_colors
-  ) +
-  scale_x_continuous(
-    labels = scales::label_number(
-      scale = 100,
-      accuracy = 1,
-      suffix = "%"
-    ),
-    expand = expansion(
-      mult = c(0, 0.1)
-    )
-  ) +
-  scale_y_discrete(drop = FALSE) +
-  labs(
-    x = "Mixed fraction",
-    y = NULL,
-    shape = NULL,
-    fill = NULL
-  ) +
-  guides(
-    shape = guide_legend(nrow = 1),
-    fill = guide_legend(nrow = 1)
-  ) +
-  theme_bw(base_size = 9) +
-  axis_theme +
-  theme(
-    panel.grid.major.y = element_line(
-      linewidth = 0.2,
-      color = "grey90"
-    ),
-    panel.grid.major.x = element_line(
-      linewidth = 0.2,
-      color = "grey90"
-    ),
-    panel.grid.minor = element_blank(),
-    legend.position = "top",
-    legend.box = "horizontal",
-    plot.margin = margin(5, 5, 5, 5)
-  )
-
-p_c
+  transmute(figs7c_summary, Pathway, Pathway_label, Level, y,
+    Comparison = "Observed", mixed_fraction = observed),
+  transmute(figs7c_summary, Pathway, Pathway_label, Level, y,
+    Comparison = "Randomized null", mixed_fraction = null_mean)
+) %>% mutate(Key = paste(Comparison, Level, sep = ": "))
+key_levels <- c("Observed: Species ≥3 HQ MAGs", "Randomized null: Species ≥3 HQ MAGs",
+                "Observed: Species ≥5 HQ MAGs", "Randomized null: Species ≥5 HQ MAGs")
+key_labels <- c("Observed ≥3 HQ MAGs", "Null ≥3 HQ MAGs", "Observed ≥5 HQ MAGs", "Null ≥5 HQ MAGs")
+figs7c_data$Key <- factor(figs7c_data$Key, levels = key_levels)
+key_colors <- setNames(c("#00A087FF", "#00A087FF", "#E64B35FF", "#E64B35FF"), key_levels)
+key_fills <- setNames(c("#00A087FF", "white", "#E64B35FF", "white"), key_levels)
+key_shapes <- setNames(c(24, 24, 22, 22), key_levels)
+p_c <- ggplot(figs7c_data, aes(x = mixed_fraction, y = y)) +
+  geom_segment(data = figs7c_summary,
+    aes(x = observed, xend = null_mean, y = y, yend = y, colour = Level),
+    inherit.aes = FALSE, linewidth = 0.35, alpha = 0.6, show.legend = FALSE) +
+  geom_point(aes(shape = Key, fill = Key), size = 2.8, stroke = 0.5, colour = "grey15") +
+  scale_shape_manual(values = key_shapes, breaks = key_levels, labels = key_labels) +
+  scale_fill_manual(values = key_fills, breaks = key_levels, labels = key_labels) +
+  scale_colour_manual(values = level_fill_colors, guide = "none") +
+  scale_x_continuous(labels = scales::label_percent(accuracy = 1),
+    limits = c(-0.02, 1.04), breaks = c(0, 0.25, 0.5, 0.75, 1), expand = expansion(mult = 0)) +
+  scale_y_continuous(breaks = seq_along(pathway_order_bc), labels = pathway_order_bc,
+    limits = c(0.4, length(pathway_order_bc) + 0.6), expand = expansion(mult = 0)) +
+  labs(x = "Mixed species–pathway fraction", y = NULL, shape = NULL, fill = NULL) +
+  guides(shape = guide_legend(nrow = 2, byrow = TRUE),
+         fill = guide_legend(nrow = 2, byrow = TRUE)) +
+  theme_bw(base_size = 9) + axis_theme +
+  theme(panel.grid.major.y = element_line(linewidth = 0.2, color = "grey90"),
+    panel.grid.major.x = element_line(linewidth = 0.2, color = "grey90"),
+    panel.grid.minor = element_blank(), legend.position = "top",
+    legend.text = element_text(size = 8), legend.box = "horizontal",
+    plot.margin = margin(5, 5, 5, 5))
+if (interactive()) print(p_c)
 
 # ============================================================
 # Combine panels
@@ -796,31 +538,17 @@ figs7 <- (
     tag_levels = "a"
   )
 
-figs7
+if (interactive()) print(figs7)
 
 # ----------------------------- #
-# Export
+# Export: PDF by default; optional PNG is commented out
 # ----------------------------- #
 
-ggsave(
-  filename = output_pdf,
-  plot = figs7,
-  width = 12,
-  height = 12
-)
+ggsave("figures/FigS7.pdf", figs7,
+  width = figure_width, height = figure_height, units = "in", bg = "white")
 
-# ----------------------------- #
-# Record the R environment
-# ----------------------------- #
+#ggsave("figures/FigS7.png", figs7, device = grDevices::png,
+#  width = figure_width, height = figure_height, units = "in",
+#  dpi = png_dpi, type = "cairo", bg = "white")
 
-if (!dir.exists("../envs")) {
-  dir.create(
-    "../envs",
-    recursive = TRUE
-  )
-}
-
-writeLines(
-  capture.output(sessionInfo()),
-  "../envs/FigS7.sessionInfo.txt"
-)
+writeLines(capture.output(sessionInfo()), "../envs/FigS7.sessionInfo.txt")
