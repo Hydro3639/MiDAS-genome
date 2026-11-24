@@ -10,7 +10,7 @@ In total, 83 AS samples were subjected to Nanopore-based ultra-deep long-read se
 | Folder | Content |
 | --- | --- |
 | `scripts/` | General analysis scripts and reusable computational workflows that are **not figure-specific**. |
-| <code>└──&nbsp;genome_quality_classification/</code> | Modular workflow for genome quality assessment and classification based on CheckM2 quality estimates, GTDB-Tk domain assignments, and rRNA and tRNA annotations from Bakta, Barrnap, and tRNAscan-SE. |
+| [<code>└──&nbsp;genome_quality_classification/</code>](scripts/genome_quality_classification/) | Modular workflow for genome quality assessment and classification based on CheckM2 quality estimates, GTDB-Tk domain assignments, and rRNA and tRNA annotations from Bakta, Barrnap, and tRNAscan-SE. |
 | `analysis/` | Figure-oriented analysis layer used to reproduce manuscript results. |
 | <code>├──&nbsp;scripts/</code> | R scripts used to generate individual manuscript figures. |
 | <code>├──&nbsp;sources/</code> | Processed input data used directly for figure generation. |
