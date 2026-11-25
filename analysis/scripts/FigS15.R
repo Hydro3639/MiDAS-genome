@@ -1,12 +1,14 @@
 ############################################################
 ## Figure S15: rRNA recovery within shared species
 ##
-## Inputs:
+## Input:
 ##   - sources/FigS15_rRNA.tsv
+##     Required columns:
+##       Cohort, Catalog, Feature, Positive, Total, Percentage, Length_rule
+##       length creteria, same with Fig1d
 ##
-## Outputs:
+## Output:
 ##   - figures/FigS15.pdf
-##   ##- figures/FigS15.png (600 dpi)
 ##   - ../envs/FigS15.sessionInfo.txt
 ############################################################
 
@@ -25,10 +27,6 @@ group_colors <- c("MiDAS-HQ" = "#ed665dFF", "GWASMC" = "#59a14f")
 group_levels <- c("GWASMC", "MiDAS-HQ")
 base_text_size <- 9
 value_text_size <- 2.7
-median_y_offset <- 0.50
-point_size <- 0.35
-point_alpha <- 0.17
-#png_dpi <- 600
 
 dir.create("figures", showWarnings = FALSE, recursive = TRUE)
 dir.create("../envs", showWarnings = FALSE, recursive = TRUE)
@@ -66,9 +64,16 @@ figure_height <- 3.8
 
 data <- read.delim("sources/FigS15_rRNA.tsv", stringsAsFactors = FALSE)
 
+cohort_sizes <- c(HQ_shared = 2289L, HQ_quality = 738L)
+features <- c("5S rRNA", "16S rRNA", "23S rRNA", "Intact operon")
+expected_columns <- c("Cohort", "Catalog", "Feature", "Positive", "Total", "Percentage", "Length_rule")
+
+
 data <- data %>% mutate(
   Catalog = factor(Catalog, levels = group_levels),
-  Label = sprintf("%.1f%%", Percentage),
+  # Show the extra digit when a non-universal result would otherwise read 100.0%.
+  Label = ifelse(Positive < Total & round(Percentage, 1) == 100,
+                 sprintf("%.2f%%", Percentage), sprintf("%.1f%%", Percentage)),
   Label_x = ifelse(Percentage >= 85, Percentage - 2, Percentage + 2),
   Label_hjust = ifelse(Percentage >= 85, 1, 0)
 )
@@ -194,8 +199,5 @@ p_combined <- ((p_a | p_b | p_c | p_d) / (p_e | p_f | p_g | p_h)) +
 
 ggsave("figures/FigS15.pdf", p_combined, device = cairo_pdf,
   width = figure_width, height = figure_height, units = "in", bg = "white")
-#ggsave("figures/FigS15.png", p_combined,
-#  width = figure_width, height = figure_height, units = "in",
-#  dpi = png_dpi, type = "cairo", bg = "white")
 if (interactive()) print(p_combined)
 writeLines(capture.output(sessionInfo()), "../envs/FigS15.sessionInfo.txt")
