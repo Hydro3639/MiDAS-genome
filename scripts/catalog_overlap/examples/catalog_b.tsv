@@ -1,0 +1,3 @@
+GenomeID	path	taxonomy
+b_genome_1	genomes/catalog_b/b_genome_1.fna	d__Bacteria;p__Example;g__Example;s__Example species
+b_genome_2	genomes/catalog_b/b_genome_2.fna	
