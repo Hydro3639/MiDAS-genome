@@ -5,7 +5,7 @@
 ## Input:
 ##   - sources/Fig1d_rRNA_whole_catalog.tsv
 ##     Required columns:
-##       Domain_subset, Group, Feature, Positive, Total, Percentage
+##       Domain_subset, Group, Feature, Positive, Total, Percentage, Length_rule
 ##   - sources/Fig1d_BGC_whole_catalog_genomes.tsv
 ##     Required columns:
 ##       genome, Catalog, Quality, Domain, region_count,
@@ -19,16 +19,7 @@
 ##
 ## Output:
 ##   - figures/Fig1d.pdf
-##   ##- figures/Fig1d.png
-##   ##- figures/Fig1d.rRNA_plot_data.tsv
-##   ##- figures/Fig1d.BGC_summary.tsv
 ##   - ../envs/Fig1d.sessionInfo.txt
-##
-## Notes:
-##   - HQ and MQ groups follow each study's original definitions.
-##   - so, for GWASMC HQ MAGs, RNA genes were not required.
-##   - Row order: MiDAS-HQ, MiDAS-MQ, GWASMC-HQ, GWASMC-MQ.
-##   - Complete predicted BGC regions have contig_edge=False.
 ############################################################
 
 library(ggplot2)
@@ -58,7 +49,6 @@ dir.create("../envs", showWarnings = FALSE)
 # ----------------------------- #
 
 domain_subset <- "All"  # Change to "Bacteria" for bacteria only
-panel_tag <- "d"        # One label for the complete five-plot row
 
 group_levels <- c(
   "MiDAS-HQ", "MiDAS-MQ",
@@ -117,7 +107,19 @@ group_axis <- function() {
 # ----------------------------- #
 
 rrna_raw <- read.delim("sources/Fig1d_rRNA_whole_catalog.tsv", stringsAsFactors = FALSE, check.names = FALSE)
-rrna_required <- c("Domain_subset", "Group", "Feature", "Positive", "Total", "Percentage")
+rrna_required <- c("Domain_subset", "Group", "Feature", "Positive", "Total", "Percentage", "Length_rule")
+if (!all(rrna_required %in% names(rrna_raw))) {
+  stop("Use the length-filtered Fig. 1d rRNA input. Missing columns: ",
+       paste(setdiff(rrna_required, names(rrna_raw)), collapse = ", "))
+}
+
+# The length filter applies only to the Fig. 1d comparison. Its denominators
+# are all MAGs in each catalog's original HQ or MQ group. Each gene is counted
+# once per MAG at >=80 bp (5S), >=1,200/900 bp (bacterial/archaeal 16S) or
+# >=1,900 bp (23S). An operon requires qualifying copies at the same linked loci.
+if (anyNA(rrna_raw$Length_rule) || !all(rrna_raw$Length_rule == "GTDB r226")) {
+  stop("Expected the Fig. 1d rRNA input prepared with the GTDB r226 length thresholds.")
+}
 feature_levels <- c("16S rRNA", "23S rRNA", "Intact operon")
 
 rrna_data <- rrna_raw %>%
@@ -125,11 +127,26 @@ rrna_data <- rrna_raw %>%
     Domain_subset == domain_subset,
     Group %in% group_levels,
     Feature %in% feature_levels
-  ) %>%
+  )
+
+if (nrow(rrna_data) != length(group_levels) * length(feature_levels) ||
+    anyDuplicated(rrna_data[c("Group", "Feature")])) {
+  stop("Expected one rRNA count for each of the four groups and three plotted features.")
+}
+if (anyNA(rrna_data[c("Positive", "Total")]) ||
+    any(rrna_data$Positive < 0 | rrna_data$Positive > rrna_data$Total)) {
+  stop("Invalid rRNA counts.")
+}
+observed_percentage <- with(rrna_data, ifelse(Total > 0, 100 * Positive / Total, NA_real_))
+if (!isTRUE(all.equal(rrna_data$Percentage, observed_percentage, tolerance = 1e-9))) {
+  stop("Input rRNA percentages disagree with the counts.")
+}
+rrna_data <- rrna_data %>%
   mutate(
+    Percentage = observed_percentage,
     Group = factor(Group, levels = rev(group_levels)),
     Feature = factor(Feature, levels = feature_levels),
-    percentage_label = sprintf("%.1f%%", Percentage),
+    percentage_label = ifelse(is.na(Percentage), NA_character_, sprintf("%.1f%%", Percentage)),
     label_x = ifelse(Percentage >= 85, Percentage - 1.6, Percentage + 1.5),
     label_hjust = ifelse(Percentage >= 85, 1, 0)
   )
@@ -138,6 +155,7 @@ rrna_data <- rrna_raw %>%
 rrna_totals <- rrna_data %>%
   group_by(Group) %>%
   summarise(Total = first(Total), n_totals = n_distinct(Total), .groups = "drop")
+if (any(rrna_totals$n_totals != 1)) stop("rRNA denominators differ between features.")
 
 # ----------------------------- #
 # Load and validate BGC data
@@ -155,6 +173,9 @@ summary_required <- c(
   "region_count_median", "region_count_q25", "region_count_q75",
   "complete_count_median", "complete_count_q25", "complete_count_q75"
 )
+if (!all(bgc_required %in% names(bgc_raw)) || !all(summary_required %in% names(summary_raw))) {
+  stop("Missing columns in the BGC inputs.")
+}
 
 bgc_selected <- if (domain_subset == "All") bgc_raw else filter(bgc_raw, Domain == domain_subset)
 
@@ -266,7 +287,6 @@ make_bgc_panel <- function(metric, median_column, title) {
 # Assemble the single row (panel d)
 # ----------------------------- #
 
-#p16S <- make_rrna_panel("16S rRNA", "16S rRNA", show_y_text = TRUE) + labs(tag = panel_tag)
 p16S <- make_rrna_panel("16S rRNA", "16S rRNA", show_y_text = TRUE)
 p23S <- make_rrna_panel("23S rRNA", "23S rRNA")
 p_operon <- make_rrna_panel("Intact operon", "Intact operon")
@@ -286,16 +306,4 @@ ggsave(
   p_combined, filename = "figures/Fig1d.pdf", width = figure_width, height = figure_height,
   units = "in", bg = "white"
 )
-#ggsave(
-#  p_combined, filename = "figures/Fig1d.png", width = figure_width, height = figure_height,
-#  units = "in", dpi = 600, bg = "white"
-#)
-#write.table(
-#  rrna_data, "figures/Fig1d.rRNA_plot_data.tsv",
-#  sep = "\t", quote = FALSE, row.names = FALSE
-#)
-#write.table(
-#  bgc_summary, "figures/Fig1d.BGC_summary.tsv",
-#  sep = "\t", quote = FALSE, row.names = FALSE
-#)
 writeLines(capture.output(sessionInfo()), "../envs/Fig1d.sessionInfo.txt")
