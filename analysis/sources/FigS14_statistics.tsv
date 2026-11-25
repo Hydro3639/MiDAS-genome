@@ -1,5 +1,5 @@
 cohort	metric	test	n_pairs	effect	effect_scale	p_value	q_value_BH_within_cohort
-one_to_one	n50_bp	paired Wilcoxon on log2 ratios	2289	6.73820038107	median log2(MiDAS/GWASMC)	0	0
-one_to_one	n_contigs	paired Wilcoxon on log2 ratios	2289	-5.90907484287	median log2(MiDAS/GWASMC)	0	0
-c2_comparable	n50_bp	paired Wilcoxon on log2 ratios	738	5.47070587263	median log2(MiDAS/GWASMC)	1.82599339884e-122	2.73899009826e-122
-c2_comparable	n_contigs	paired Wilcoxon on log2 ratios	738	-5.27045147601	median log2(MiDAS/GWASMC)	1.81086617474e-122	2.73899009826e-122
+one_to_one	n50_bp	paired Wilcoxon on log2 ratios	2289	6.73820038107	median log2(MiDAS/GWASMC)	2.610788715188e-375	2.610788715188e-375
+one_to_one	n_contigs	paired Wilcoxon on log2 ratios	2289	-5.90907484287	median log2(MiDAS/GWASMC)	2.610426558663e-375	2.610788715188e-375
+c2_comparable	n50_bp	paired Wilcoxon on log2 ratios	738	5.47070587263	median log2(MiDAS/GWASMC)	1.825993398839e-122	2.191192078607e-122
+c2_comparable	n_contigs	paired Wilcoxon on log2 ratios	738	-5.27045147601	median log2(MiDAS/GWASMC)	1.810866174742e-122	2.191192078607e-122

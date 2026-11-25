@@ -1,9 +1,9 @@
 cohort	metric	test	n_pairs	effect	effect_scale	p_value	q_value_BH_within_cohort
-one_to_one	rrna_5S_detected	exact McNemar (binomial discordance)	2289	60.0262123198	paired percentage-point difference	0	0
-one_to_one	rrna_16S_detected	exact McNemar (binomial discordance)	2289	61.5115771079	paired percentage-point difference	0	0
-one_to_one	rrna_23S_detected	exact McNemar (binomial discordance)	2289	93.2721712538	paired percentage-point difference	0	0
-one_to_one	candidate_operon_present	exact McNemar (binomial discordance)	2289	89.5587592835	paired percentage-point difference	0	0
-c2_comparable	rrna_5S_detected	exact McNemar (binomial discordance)	738	43.6314363144	paired percentage-point difference	2.34083817735e-97	2.34083817735e-97
-c2_comparable	rrna_16S_detected	exact McNemar (binomial discordance)	738	44.9864498645	paired percentage-point difference	2.28597478256e-100	2.74316973908e-100
-c2_comparable	rrna_23S_detected	exact McNemar (binomial discordance)	738	87.2628726287	paired percentage-point difference	2.73976168626e-194	8.21928505878e-194
-c2_comparable	candidate_operon_present	exact McNemar (binomial discordance)	738	90.5149051491	paired percentage-point difference	2.73939980787e-199	1.64363988472e-198
+one_to_one	rrna_5S_detected	exact McNemar (binomial discordance)	2289	62.4290083006	paired percentage-point difference	1.346375474125e-430	2.019563211187e-430
+one_to_one	rrna_16S_detected	exact McNemar (binomial discordance)	2289	95.2380952381	paired percentage-point difference	1.136683218184e-656	3.410049654551e-656
+one_to_one	rrna_23S_detected	exact McNemar (binomial discordance)	2289	96.4613368283	paired percentage-point difference	4.234474965124e-665	2.540684979074e-664
+one_to_one	candidate_operon_present	exact McNemar (binomial discordance)	2289	89.6024464832	paired percentage-point difference	7.735865118456e-618	1.547173023691e-617
+c2_comparable	rrna_5S_detected	exact McNemar (binomial discordance)	738	46.6124661247	paired percentage-point difference	5.580993121495e-104	5.580993121495e-104
+c2_comparable	rrna_16S_detected	exact McNemar (binomial discordance)	738	91.7344173442	paired percentage-point difference	3.189502384351e-204	9.568507153054e-204
+c2_comparable	rrna_23S_detected	exact McNemar (binomial discordance)	738	93.4959349593	paired percentage-point difference	3.893435527772e-208	2.336061316663e-207
+c2_comparable	candidate_operon_present	exact McNemar (binomial discordance)	738	90.7859078591	paired percentage-point difference	4.082563051970e-202	8.165126103939e-202
